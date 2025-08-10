@@ -1,0 +1,66 @@
+/* App.css - Main application styles */
+
+.App {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* Remove default margins */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Smooth transitions */
+a, button {
+  transition: all 0.3s ease;
+}
+
+/* Loading spinner container */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+}
+
+/* Error message styles */
+.error-message {
+  color: #d32f2f;
+  padding: 12px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin: 16px 0;
+}
+
+/* Success message styles */
+.success-message {
+  color: #2e7d32;
+  padding: 12px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  margin: 16px 0;
+}
+
+/* Card hover effects */
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .App {
+    padding: 0;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+}

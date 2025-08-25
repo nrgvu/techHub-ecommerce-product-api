@@ -36,8 +36,8 @@ const fetchProducts = async (): Promise<void> => {
   try {
     const response = await productsAPI.getAll();
     
-    console.log('Full API response:', response);
-    console.log('Response.data:', response.data);
+    // console.log('Full API response:', response);
+    // console.log('Response.data:', response.data);
     
     //  Type as 'any' to avoid TypeScript errors
     //  This problem took me two days to solve, even though it seems ridiculous

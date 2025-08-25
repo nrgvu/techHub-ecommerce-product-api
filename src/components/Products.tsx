@@ -40,7 +40,7 @@ const fetchProducts = async (): Promise<void> => {
     // console.log('Response.data:', response.data);
     
     //  Type as 'any' to avoid TypeScript errors
-    //  This problem took me two days to solve, even though it seems ridiculous
+    // *************************temperory solution for the response hadling***************************
     const apiResponseData: any = response.data.data;
     const productsData: any[] = apiResponseData.data || [];
     

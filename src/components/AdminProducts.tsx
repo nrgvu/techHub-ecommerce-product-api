@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent, FormEvent } from 'react';
 import {
   Container,
   Typography,
@@ -17,26 +17,55 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Grid,
   Alert,
   Snackbar,
   Pagination,
   Stack,
+  AlertColor,
 } from '@mui/material';
 import { Add, Edit, Delete } from '@mui/icons-material';
-import { productsAPI } from '../api/productsAPI';
+import { productsAPI, Product, CreateProductData, UpdateProductData } from '../api/productsAPI';
+
+// Local interfaces for this component
+interface FormData {
+  name: string;
+  description: string;
+  price: string;
+  discount: string;
+  stock: string;
+}
+
+interface SnackbarState {
+  open: boolean;
+  message: string;
+  severity: AlertColor;
+}
+
+// Define error type
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message: string;
+}
 
 const AdminProducts = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [itemsPerPage] = useState(10);
-  const [formData, setFormData] = useState({
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [snackbar, setSnackbar] = useState<SnackbarState>({ 
+    open: false, 
+    message: '', 
+    severity: 'success' 
+  });
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [itemsPerPage] = useState<number>(10);
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     price: '',
@@ -44,7 +73,7 @@ const AdminProducts = () => {
     stock: ''
   });
 
-  const showSnackbar = (message, severity = 'success') => {
+  const showSnackbar = (message: string, severity: AlertColor = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
 
@@ -52,26 +81,38 @@ const AdminProducts = () => {
     try {
       setLoading(true);
       const response = await productsAPI.getAll({ page, limit: itemsPerPage });
-      const data = response.data;
       
-      // Handle different response structures
-      let productsData, totalCount;
+      console.log('Full API response:', response);
+      console.log('Response.data:', response.data);
       
-      if (data.data && data.data.data) {
-        // Nested structure: response.data.data.data
+      const data: any = response.data;
+      let productsData: any[];
+      let totalCount: number;
+      
+      // Handle different API response structures
+      if (data.data && data.data.data && Array.isArray(data.data.data)) {
+        // Structure: response.data.data.data (nested)
         productsData = data.data.data;
         totalCount = data.data.total || data.data.count || productsData.length;
-      } else if (data.data) {
+      } else if (data.data && Array.isArray(data.data)) {
         // Structure: response.data.data
         productsData = data.data;
         totalCount = data.total || data.count || productsData.length;
-      } else {
-        // Structure: response.data
+      } else if (Array.isArray(data)) {
+        // Structure: response.data (direct array)
         productsData = data;
         totalCount = productsData.length;
+      } else {
+        // Fallback
+        console.log('Unexpected data structure:', data);
+        productsData = [];
+        totalCount = 0;
       }
 
-      setProducts(Array.isArray(productsData) ? productsData : []);
+      console.log('Processed products:', productsData);
+      console.log('Total count:', totalCount);
+
+      setProducts(productsData);
       setTotalCount(totalCount);
       setTotalPages(Math.ceil(totalCount / itemsPerPage));
     } catch (error) {
@@ -91,8 +132,7 @@ const AdminProducts = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  // ✅ FIXED: Added missing setOpenDialog(true)
-  const handleOpenDialog = (product = null) => {
+  const handleOpenDialog = (product?: any): void => {
     if (product) {
       setEditingProduct(product);
       setFormData({
@@ -112,10 +152,10 @@ const AdminProducts = () => {
         stock: ''
       });
     }
-    setOpenDialog(true); // ✅ CRITICAL FIX: This was missing!
+    setOpenDialog(true);
   };
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = (): void => {
     setOpenDialog(false);
     setEditingProduct(null);
     setFormData({
@@ -127,15 +167,14 @@ const AdminProducts = () => {
     });
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
 
-  // ✅ SIMPLIFIED: Removed all image-related code
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!formData.name || !formData.price) {
@@ -144,7 +183,8 @@ const AdminProducts = () => {
     }
 
     try {
-      const productData = {
+      // Use proper interfaces for create/update data (without id)
+      const productData: CreateProductData | UpdateProductData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price) || 0,
@@ -152,7 +192,7 @@ const AdminProducts = () => {
         stock: parseInt(formData.stock) || 0
       };
 
-      if (editingProduct) {
+      if (editingProduct && editingProduct.id) {
         await productsAPI.update(editingProduct.id, productData);
         showSnackbar('Product updated successfully');
       } else {
@@ -164,11 +204,12 @@ const AdminProducts = () => {
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving product:', error);
-      showSnackbar(`Error saving product: ${error.response?.data?.message || error.message}`, 'error');
+      const apiError = error as ApiError;
+      showSnackbar(`Error saving product: ${apiError.response?.data?.message || apiError.message}`, 'error');
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: any) => {
     if (!id) {
       showSnackbar('Invalid product ID', 'error');
       return;
@@ -187,12 +228,13 @@ const AdminProducts = () => {
         }
       } catch (error) {
         console.error('Error deleting product:', error);
-        showSnackbar(`Error deleting product: ${error.response?.data?.message || error.message}`, 'error');
+        const apiError = error as ApiError;
+        showSnackbar(`Error deleting product: ${apiError.response?.data?.message || apiError.message}`, 'error');
       }
     }
   };
 
-  const handlePageChange = (_, page) => {
+  const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
   };
 
@@ -245,7 +287,7 @@ const AdminProducts = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>{product.categoryName || 'No category'}</TableCell>
-                    <TableCell>${product.price || '0.00'}</TableCell>
+                    <TableCell>${parseFloat(product.price || '0').toFixed(2)}</TableCell>
                     <TableCell>
                       <Typography
                         sx={{
@@ -264,8 +306,9 @@ const AdminProducts = () => {
                         <Edit />
                       </IconButton>
                       <IconButton
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => product.id && handleDelete(product.id)}
                         color="error"
+                        disabled={!product.id}
                       >
                         <Delete />
                       </IconButton>
@@ -308,63 +351,53 @@ const AdminProducts = () => {
               {editingProduct ? 'Edit Product' : 'Add New Product'}
             </DialogTitle>
             <DialogContent>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12}>
-                  <TextField
-                    required
-                    fullWidth
-                    name="name"
-                    label="Product Name"
-                    value={formData.name}
-                    onChange={handleInputChange}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                <TextField 
+                  required 
+                  fullWidth 
+                  name="name" 
+                  label="Product Name" 
+                  value={formData.name} 
+                  onChange={handleInputChange} 
+                />
+                <TextField 
+                  required 
+                  fullWidth 
+                  name="description" 
+                  label="Description" 
+                  multiline 
+                  rows={4} 
+                  value={formData.description} 
+                  onChange={handleInputChange} 
+                />
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField 
+                    required 
+                    sx={{ flex: '1 1 200px' }}
+                    name="price" 
+                    label="Price ($)" 
+                    type="number" 
+                    value={formData.price} 
+                    onChange={handleInputChange} 
                   />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    required
-                    fullWidth
-                    name="description"
-                    label="Description"
-                    multiline
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleInputChange}
+                  <TextField 
+                    sx={{ flex: '1 1 200px' }}
+                    name="discount" 
+                    label="Discount ($)" 
+                    type="number" 
+                    value={formData.discount} 
+                    onChange={handleInputChange} 
                   />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    required
-                    fullWidth
-                    name="price"
-                    label="Price ($)"
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    name="discount"
-                    label="Discount ($)"
-                    type="number"
-                    step="0.01"
-                    value={formData.discount}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    name="stock"
-                    label="Stock Quantity"
-                    type="number"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                  />
-                </Grid>
-              </Grid>
+                </Box>
+                <TextField 
+                  sx={{ maxWidth: 300 }}
+                  name="stock" 
+                  label="Stock Quantity" 
+                  type="number" 
+                  value={formData.stock} 
+                  onChange={handleInputChange} 
+                />
+              </Box>
             </DialogContent>
             <DialogActions>
               <Button onClick={handleCloseDialog}>Cancel</Button>

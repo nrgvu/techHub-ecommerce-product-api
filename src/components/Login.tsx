@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import {
   Container,
   Paper,
@@ -13,14 +12,14 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -31,12 +30,12 @@ const Login = () => {
       return;
     }
 
-    const result = await login(email, password);
+    const result = await login({ email, password });
 
     if (result.success) {
       navigate('/products');
     } else {
-      setError(result.error);
+      setError(result.error || 'Login failed');
     }
 
     setLoading(false);

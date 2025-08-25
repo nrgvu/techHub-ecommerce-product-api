@@ -1,7 +1,10 @@
 import { Navigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-
-const AdminRoute = ({ children }) => {
+import { ReactNode } from 'react';
+interface  AdminRouteProps {
+  children: ReactNode;
+}
+const AdminRoute = ({ children}: AdminRouteProps) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
   if (loading) {

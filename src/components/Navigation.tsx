@@ -22,15 +22,15 @@ import { Link, useNavigate } from 'react-router-dom';
 // import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useState, useEffect } from 'react';
+import {User} from '../api/authAPI'
 
 const Navigation = () => {
   const navigate = useNavigate();
   const [adminMenuAnchor, setAdminMenuAnchor] = useState(null);
   
-  // ✅ FIXED: Object destructuring instead of array
   const { darkMode, toggleDarkMode } = useTheme();
   
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,15 +41,13 @@ const Navigation = () => {
     setLoading(false);
   }, []);
 
-  // ✅ ADDED: Missing handleLogout function
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    navigate('/products'); // Redirect to products after logout
+    navigate('/products'); 
   };
 
-  // ✅ ADDED: Helper to check if user is admin
   const isAdmin = () => user?.role === 'SUPER_ADMIN';
 
   return (
@@ -57,29 +55,22 @@ const Navigation = () => {
       <AppBar>
         <Toolbar>
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* App Title */}
             <Typography variant='h6' component="div" sx={{ flexGrow: 1 }}>
               E-Commerce App
             </Typography>
 
-            {/* Theme Toggle */}
             <Button color="inherit" onClick={toggleDarkMode}>
               {darkMode ? <LightMode /> : <DarkMode />}
             </Button>
 
-            {/* ✅ UPDATED: Proper conditional rendering based on user status */}
             {user ? (
-              // USER IS LOGGED IN
               <>
                 {isAdmin() ? (
-                  // ✅ USER IS ADMIN
                   <>
-                    {/* Admin Greeting */}
                     <Typography variant="body2" sx={{ mr: 2, fontWeight: 600 }}>
-                      Welcome Admin, {user.name || user.firstName || 'Admin'}!
+                      Welcome Admin, { user.firstName || 'Admin'}!
                     </Typography>
 
-                    {/* Manage Products Button */}
                     <Button 
                       color="inherit" 
                       onClick={() => navigate('/adminProducts')}
@@ -88,26 +79,21 @@ const Navigation = () => {
                       Manage Products
                     </Button>
 
-                    {/* Admin Logout Button */}
                     <Button color='inherit' onClick={handleLogout}>
                       <Logout sx={{ mr: 1 }} />
                       Logout
                     </Button>
                   </>
                 ) : (
-                  // ✅ USER IS REGULAR USER (NOT ADMIN)
                   <>
-                    {/* User Greeting */}
                     <Typography variant="body2" sx={{ mr: 2, fontWeight: 600 }}>
-                      Welcome, {user.name || user.firstName || 'User'}!
+                      Welcome, {user.firstName || 'User'}!
                     </Typography>
 
-                    {/* Products Button */}
                     <Button color="inherit" onClick={() => navigate('/products')}>
                       Products
                     </Button>
 
-                    {/* User Logout Button */}
                     <Button color='inherit' onClick={handleLogout}>
                       <Logout sx={{ mr: 1 }} />
                       Logout
@@ -116,20 +102,16 @@ const Navigation = () => {
                 )}
               </>
             ) : (
-              // ✅ USER IS GUEST (NOT LOGGED IN)
               <>
-                {/* Products Button for Guests */}
                 <Button color="inherit" onClick={() => navigate('/products')}>
                   Products
                 </Button>
 
-                {/* Login Button */}
                 <Button color='inherit' onClick={() => navigate('/login')}>
                   <Login sx={{ mr: 1 }} />
                   Login
                 </Button>
 
-                {/* Register Button */}
                 <Button color='inherit' onClick={() => navigate('/register')}>
                   Register
                 </Button>
@@ -139,7 +121,6 @@ const Navigation = () => {
         </Toolbar>
       </AppBar>
       
-      {/* Add spacing to push content below AppBar */}
       <Toolbar />
     </>
   );

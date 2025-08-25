@@ -10,32 +10,61 @@ import {
     Alert,
     Stack
 } from '@mui/material'
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { User } from "../api/authAPI";
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message: string;
+}
+
+interface ApiResponse {
+    success: boolean;
+    error?: string;
+}
+
+interface FormData {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+}
 
 function Register() {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>('');
+    const [success, setSuccess] = useState<string>('');
     
-    // Form states
-const [formData, setFormData] = useState({
-    firstName: '',        // Changed from 'name'
-    lastName: '',         // Added lastName
-    email: '',
-    password: '',
-    confirmPassword: ''
-});
+    // Form states with proper typing
+    const [formData, setFormData] = useState<FormData>({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+    });
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
-        if(token && userData){
-            setUser(JSON.parse(userData));
+        if (token && userData) {
+            try {
+                setUser(JSON.parse(userData));
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+            }
         }
     }, []);
 
-    const handleChange = (e) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -45,32 +74,32 @@ const [formData, setFormData] = useState({
         if (error) setError('');
     };
 
-// UPDATE: Validation function
-const validateForm = () => {
-    if (!formData.firstName.trim()) {
-        setError('First name is required');
-        return false;
-    }
-    if (!formData.lastName.trim()) {
-        setError('Last name is required');
-        return false;
-    }
-    if (!formData.email.trim()) {
-        setError('Email is required');
-        return false;
-    }
-    if (formData.password.length < 6) {
-        setError('Password must be at least 6 characters');
-        return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
-        return false;
-    }
-    return true;
-};
+    // Validation function
+    const validateForm = (): boolean => {
+        if (!formData.firstName.trim()) {
+            setError('First name is required');
+            return false;
+        }
+        if (!formData.lastName.trim()) {
+            setError('Last name is required');
+            return false;
+        }
+        if (!formData.email.trim()) {
+            setError('Email is required');
+            return false;
+        }
+        if (formData.password.length < 6) {
+            setError('Password must be at least 6 characters');
+            return false;
+        }
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            return false;
+        }
+        return true;
+    };
 
-    const register = async (userData) => {
+    const register = async (userData: Omit<User, 'id' | 'role'>): Promise<ApiResponse> => {
         try {
             const response = await authAPI.register(userData);
             const { user, access_token } = response.data.data;
@@ -83,7 +112,8 @@ const validateForm = () => {
             
             // Clear form
             setFormData({
-                name: '',
+                firstName: '',
+                lastName: '',
                 email: '',
                 password: '',
                 confirmPassword: ''
@@ -91,37 +121,45 @@ const validateForm = () => {
             
             return { success: true };
         } catch (error) {
+            const apiError = error as ApiError;
             return {
                 success: false,
-                error: error.response?.data?.message || error.message,
+                error: apiError.response?.data?.message || apiError.message || 'Registration failed',
             };
         }
     };
 
-// UPDATE: Submit function
-const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setLoading(true);
-    setError('');
-    setSuccess('');
+    // Submit function with proper typing
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        
+        if (!validateForm()) return;
+        
+        setLoading(true);
+        setError('');
+        setSuccess('');
 
-    // Send firstName and lastName separately
-    const { firstName, lastName, email, password } = formData;
-    const result = await register({ firstName, lastName, email, password });
-    
-    if (!result.success) {
-        setError(result.error);
-    }
-    
-    setLoading(false);
-};
+        // Send firstName and lastName separately (excluding confirmPassword)
+        const { firstName, lastName, email, password } = formData;
+        const result = await register({ 
+            firstName, 
+            lastName, 
+            email, 
+            password,
+            
+        });
+        
+        if (!result.success && result.error) {
+            setError(result.error);
+        }
+        
+        setLoading(false);
+    };
+
     const logout = () => {
         setUser(null); 
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeUser('user');
     };
 
     const isAdmin = () => user?.role === 'SUPER-ADMIN';
@@ -134,7 +172,7 @@ const handleSubmit = async (e) => {
                 <Card>
                     <CardContent>
                         <Typography variant="h5" gutterBottom>
-                            Welcome, {user.name}!
+                            Welcome, {user.firstName} {user.lastName}!
                         </Typography>
                         <Typography variant="body1" gutterBottom>
                             You are already logged in.
@@ -174,54 +212,51 @@ const handleSubmit = async (e) => {
 
                     <Box component="form" onSubmit={handleSubmit}>
                         <Stack spacing={3}>
-                               <TextField 
-                                    variant="outlined" 
-                                    value={formData.firstName} 
-                                    name="firstName"           // Changed from "name"
-                                    onChange={handleChange} 
-                                    fullWidth 
-                                    type="text" 
-                                    label="First Name"        // Changed from "Full Name"
-                                    required
-                                    autoComplete="given-name"
-                                    size="large"
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            fontSize: '1.2rem',
-                                            '& input': {
-                                                py: 2
-                                            }
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            fontSize: '1.1rem'
+                            <TextField 
+                                variant="outlined" 
+                                value={formData.firstName} 
+                                name="firstName"
+                                onChange={handleChange} 
+                                fullWidth 
+                                type="text" 
+                                label="First Name"
+                                required
+                                autoComplete="given-name"
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: '1.2rem',
+                                        '& input': {
+                                            py: 2
                                         }
-                                    }}
-                                />
-                                
-                                 <TextField 
-                                    variant="outlined" 
-                                    value={formData.lastName} 
-                                    name="lastName"           // New field
-                                    onChange={handleChange} 
-                                    fullWidth 
-                                    type="text" 
-                                    label="Last Name"         // New field
-                                    required
-                                    autoComplete="family-name"
-                                    size="large"
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            fontSize: '1.2rem',
-                                            '& input': {
-                                                py: 2
-                                            }
-                                        },
-                                        '& .MuiInputLabel-root': {
-                                            fontSize: '1.1rem'
-                                        }
-                                    }}
-                                />                    
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        fontSize: '1.1rem'
+                                    }
+                                }}
+                            />
                             
+                            <TextField 
+                                variant="outlined" 
+                                value={formData.lastName} 
+                                name="lastName"
+                                onChange={handleChange} 
+                                fullWidth 
+                                type="text" 
+                                label="Last Name"
+                                required
+                                autoComplete="family-name"
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        fontSize: '1.2rem',
+                                        '& input': {
+                                            py: 2
+                                        }
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        fontSize: '1.1rem'
+                                    }
+                                }}
+                            />                    
                             
                             <TextField 
                                 variant="outlined" 
